@@ -23,7 +23,7 @@ View the live project here:
 
 - **Frontend & Backend**: Streamlit
 - **AI Model**: LLaMA 3.3 70B Versatile
-- **PDF Processing**: PyPDF2/PyMuPDF
+- **PDF Processing**: PyPDF2/PyMuPDF/Tesseract-OCR 
 - **Inference API**: Groq API
 - **Data Visualization**: Pandas, Streamlit native charts
 
