@@ -1,8 +1,15 @@
 # MediScan Health Report Analyzer 🩺
 
+[![Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://karanjain09-mediscan-app.streamlit.app/)
+
 ## Overview
 
 MediScan is an AI-powered health report analysis tool that extracts, analyzes, and provides personalized recommendations from blood test PDFs. The application uses advanced natural language processing to interpret medical data and generate actionable health insights.
+
+## Demo
+
+View the live project here:  
+[https://karanjain09-mediscan-app.streamlit.app/](https://karanjain09-mediscan-app.streamlit.app/)
 
 ## Features
 
@@ -85,9 +92,6 @@ mediscan/
 4. **Visualization**: Key health indicators are displayed in charts and tables
 5. **Recommendations**: The system generates personalized health recommendations based on the analysis
 
-## Demo
-
-![MediScan Demo]((https://karanjain09-mediscan-app.streamlit.app/))
 
 ## Contributing
 
