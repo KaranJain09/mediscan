@@ -113,10 +113,11 @@ MediScan is intended for informational purposes only and is not a substitute for
 
 ## Contact
 
-Your Name - [@yourusername](https://twitter.com/yourusername) - email@example.com
+**Karan Jain**  
+[LinkedIn: karan-jain-161b60267](https://www.linkedin.com/in/karan-jain-161b60267)  
+Email: [karanrpjain@gmail.com](mailto:karanrpjain@gmail.com)
 
-Project Link: [https://github.com/yourusername/mediscan](https://github.com/yourusername/mediscan)
+Project Link: [https://karanjain09-mediscan-app.streamlit.app/](https://karanjain09-mediscan-app.streamlit.app/)
 
----
 
 <p align="center">Made with ❤️ for better health insights</p>
