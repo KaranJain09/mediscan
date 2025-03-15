@@ -1,7 +1,5 @@
 # MediScan Health Report Analyzer 🩺
 
-![MediScan Banner](https://via.placeholder.com/1200x300/4ca1af/ffffff?text=MediScan+Health+Report+Analyzer)
-
 ## Overview
 
 MediScan is an AI-powered health report analysis tool that extracts, analyzes, and provides personalized recommendations from blood test PDFs. The application uses advanced natural language processing to interpret medical data and generate actionable health insights.
