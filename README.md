@@ -87,7 +87,7 @@ mediscan/
 
 ## Demo
 
-![MediScan Demo]([https://via.placeholder.com/800x450/f8f9fa/2c3e50?text=MediScan+Demo+Screenshot](https://karanjain09-mediscan-app.streamlit.app/))
+![MediScan Demo]((https://karanjain09-mediscan-app.streamlit.app/))
 
 ## Contributing
 
