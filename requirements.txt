@@ -1,13 +1,10 @@
 langchain
 streamlit
 PyMuPDF
-chromadb
-ollama
-langchain-community
-camelot-py
 opencv-python
 python-dotenv
 pandas
 pytesseract
 pillow
 streamlit_lottie
+plotly

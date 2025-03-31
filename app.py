@@ -1,7 +1,10 @@
 import streamlit as st
 from pdf_processor import extract_text_from_pdf
-from agent import generate_recommendations
+from agent import generate_recommendations, generate_health_metrics
 import time
+import json  # Needed for parsing JSON responses
+import plotly.graph_objects as go
+import re
 
 # Page configuration
 st.set_page_config(
@@ -11,9 +14,26 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS with animations
 st.markdown("""
 <style>
+    /* Global animations */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+        0% { transform: scale(0.95); }
+        50% { transform: scale(1); }
+        100% { transform: scale(0.95); }
+    }
+    .fade-in {
+        animation: fadeIn 1s ease-out;
+    }
+    .pulse {
+        animation: pulse 2s infinite;
+    }
+    
     /* Main styling */
     .main {
         background-color: #f8f9fa;
@@ -22,24 +42,29 @@ st.markdown("""
     
     /* Header */
     .header-container {
-        padding: 1.5rem;
-        background: linear-gradient(90deg, #2c3e50 0%, #4ca1af 100%);
+        padding: 2rem;
+        background: linear-gradient(-45deg, #2c3e50, #4ca1af, #2c3e50, #4ca1af);
+        background-size: 400% 400%;
+        animation: gradientBG 15s ease infinite;
         border-radius: 10px;
         margin-bottom: 2rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
         text-align: center;
     }
-    
+    @keyframes gradientBG {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
     .header-title {
-        font-size: 2.5rem;
+        font-size: 2.8rem;
         font-weight: 700;
-        color: white;
+        color: #ffffff;
         margin-bottom: 0.5rem;
     }
-    
     .header-subtitle {
-        font-size: 1.2rem;
-        color: rgba(255, 255, 255, 0.9);
+        font-size: 1.3rem;
+        color: rgba(255, 255, 255, 0.95);
         font-weight: 300;
     }
     
@@ -48,12 +73,15 @@ st.markdown("""
         padding: 1.5rem;
         border-radius: 10px;
         background-color: white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
         margin-bottom: 1rem;
+        transition: transform 0.3s ease;
     }
-    
+    .card:hover {
+        transform: translateY(-5px);
+    }
     .card-title {
-        font-size: 1.3rem;
+        font-size: 1.5rem;
         font-weight: 600;
         color: #2c3e50;
         margin-bottom: 1rem;
@@ -66,15 +94,14 @@ st.markdown("""
         background-color: #4ca1af;
         color: white;
         border: none;
-        padding: 0.5rem 1rem;
+        padding: 0.7rem 1.2rem;
         border-radius: 5px;
         font-weight: 500;
-        transition: all 0.3s;
+        transition: all 0.3s ease;
     }
-    
     .stButton > button:hover {
         background-color: #2c3e50;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.1);
     }
     
     /* Progress bar */
@@ -88,6 +115,10 @@ st.markdown("""
         border-radius: 10px;
         padding: 1rem;
         margin-bottom: 1rem;
+        transition: background-color 0.3s;
+    }
+    .stFileUploader:hover {
+        background-color: #f1f7fa;
     }
     
     /* Metrics */
@@ -96,24 +127,25 @@ st.markdown("""
         justify-content: space-between;
         margin-bottom: 1rem;
     }
-    
     .metric-card {
         background-color: #f1f7fa;
         border-radius: 8px;
         padding: 1rem;
         width: 32%;
         text-align: center;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.07);
+        transition: transform 0.3s;
     }
-    
+    .metric-card:hover {
+        transform: translateY(-3px);
+    }
     .metric-title {
-        font-size: 0.9rem;
+        font-size: 0.95rem;
         color: #7f8c8d;
         margin-bottom: 0.5rem;
     }
-    
     .metric-value {
-        font-size: 1.5rem;
+        font-size: 1.7rem;
         font-weight: 700;
         color: #2c3e50;
     }
@@ -121,7 +153,7 @@ st.markdown("""
     /* Footer */
     .footer {
         text-align: center;
-        padding: 1rem;
+        padding: 1.5rem;
         color: #95a5a6;
         font-size: 0.9rem;
         margin-top: 2rem;
@@ -132,14 +164,13 @@ st.markdown("""
     .stTabs [data-baseweb="tab-list"] {
         gap: 2px;
     }
-    
     .stTabs [data-baseweb="tab"] {
         background-color: #f1f7fa;
         border-radius: 5px 5px 0 0;
         padding: 10px 20px;
         font-weight: 500;
+        transition: background-color 0.3s;
     }
-    
     .stTabs [aria-selected="true"] {
         background-color: #4ca1af !important;
         color: white !important;
@@ -147,48 +178,37 @@ st.markdown("""
     
     /* Icons */
     .icon-container {
-        font-size: 3rem;
+        font-size: 3.5rem;
         text-align: center;
         margin: 1rem 0;
         color: #4ca1af;
     }
     
-    /* Recommendation sections */
-    .recommendation-section {
-        margin-bottom: 1.5rem;
-        padding: 1rem;
+    /* Feature Boxes */
+    .feature-box {
+        padding: 1.2rem;
         border-radius: 8px;
-        background-color: #f8f9fa;
+        background-color: #f1f7fa;
+        margin-bottom: 1rem;
+        text-align: center;
+        transition: transform 0.3s;
     }
-    
-    .recommendation-title {
+    .feature-box:hover {
+        transform: scale(1.02);
+    }
+    .feature-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        color: #4ca1af;
+    }
+    .feature-title {
         font-size: 1.2rem;
         font-weight: 600;
         color: #2c3e50;
         margin-bottom: 0.5rem;
     }
     
-    .feature-box {
-        padding: 1rem;
-        border-radius: 8px;
-        background-color: #f1f7fa;
-        margin-bottom: 1rem;
-        text-align: center;
-    }
-    
-    .feature-icon {
-        font-size: 2rem;
-        margin-bottom: 0.5rem;
-        color: #4ca1af;
-    }
-    
-    .feature-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: #2c3e50;
-        margin-bottom: 0.5rem;
-    }
-    
+    /* Disclaimer */
     .disclaimer {
         font-size: 0.8rem;
         color: #95a5a6;
@@ -198,12 +218,16 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Sidebar
+# Sidebar with animated Lottie widget
 with st.sidebar:
     st.markdown("<h3 style='text-align: center; color: #2c3e50;'>MediScan</h3>", unsafe_allow_html=True)
     
-    # Simple icon instead of Lottie animation
-    st.markdown('<div class="icon-container">🩺</div>', unsafe_allow_html=True)
+    # Lottie Animation (using a public Lottie file)
+    st.markdown("""
+    <div style="text-align: center;" class="fade-in">
+      <lottie-player src="https://assets10.lottiefiles.com/packages/lf20_x62chJ.json"  background="transparent"  speed="1"  style="width: 100%; height: 200px;"  loop  autoplay></lottie-player>
+    </div>
+    """, unsafe_allow_html=True)
     
     st.markdown("### How it works")
     st.markdown("""
@@ -230,7 +254,7 @@ with st.sidebar:
 # Main content
 # Header
 st.markdown("""
-<div class="header-container">
+<div class="header-container fade-in">
     <div class="header-title">MediScan Health Report Analyzer</div>
     <div class="header-subtitle">Upload your blood test report for personalized health insights</div>
 </div>
@@ -244,12 +268,11 @@ with tabs[0]:
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown('<div class="card-title">Upload Your Blood Test Report</div>', unsafe_allow_html=True)
         uploaded_file = st.file_uploader("Choose a PDF file", type=["pdf"], key="pdf_uploader")
         if uploaded_file is not None:
             if st.button("Process Report", key="process_button"):
-                # Progress bar animation
+                # Animated progress bar
                 progress_placeholder = st.empty()
                 progress_bar = progress_placeholder.progress(0)
                 for percent_complete in range(0, 101, 10):
@@ -265,12 +288,10 @@ with tabs[0]:
         st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        # Feature boxes instead of animation
-        st.markdown('<div class="card">', unsafe_allow_html=True)
         st.markdown('<div class="card-title">Why Use MediScan?</div>', unsafe_allow_html=True)
         
         st.markdown("""
-        <div class="feature-box">
+        <div class="feature-box pulse">
             <div class="feature-icon">🔍</div>
             <div class="feature-title">Accurate Analysis</div>
             <p>Our AI model is trained on thousands of medical reports for precise health insights.</p>
@@ -278,7 +299,7 @@ with tabs[0]:
         """, unsafe_allow_html=True)
         
         st.markdown("""
-        <div class="feature-box">
+        <div class="feature-box pulse">
             <div class="feature-icon">🔒</div>
             <div class="feature-title">Privacy Focused</div>
             <p>Your data is processed securely and never stored on our servers.</p>
@@ -286,7 +307,7 @@ with tabs[0]:
         """, unsafe_allow_html=True)
         
         st.markdown("""
-        <div class="feature-box">
+        <div class="feature-box pulse">
             <div class="feature-icon">📊</div>
             <div class="feature-title">Personalized Insights</div>
             <p>Get tailored recommendations based on your unique health profile.</p>
@@ -297,22 +318,18 @@ with tabs[0]:
 
 # Tab 2: Analysis
 with tabs[1]:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="card-title">Extracted Report Data</div>', unsafe_allow_html=True)
     
     if "extracted_text" in st.session_state:
-        # Display a sample of the extracted text with a toggle for full text
         sample_text = st.session_state["extracted_text"][:500] + "..." if len(st.session_state["extracted_text"]) > 500 else st.session_state["extracted_text"]
         st.markdown(f"**Sample of extracted text:**\n\n{sample_text}")
         
         with st.expander("View Full Extracted Text"):
             st.text_area("Complete Extracted Text", st.session_state["extracted_text"], height=300)
         
-        # Display key metrics (these would be extracted from the text in a real implementation)
         st.markdown("### Key Health Indicators")
         
-        # Metric cards row
-        st.markdown('<div class="metric-container">', unsafe_allow_html=True)
+        st.markdown('<div class="metric-container fade-in">', unsafe_allow_html=True)
         
         st.markdown("""
         <div class="metric-card">
@@ -343,7 +360,6 @@ with tabs[1]:
 
 # Tab 3: Recommendations
 with tabs[2]:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
     st.markdown('<div class="card-title">Health Recommendations</div>', unsafe_allow_html=True)
     
     if "extracted_text" in st.session_state:
@@ -355,7 +371,6 @@ with tabs[2]:
         else:
             st.markdown(recommendations)
             
-            # Action buttons for recommendations
             col1, col2, col3 = st.columns(3)
             with col1:
                 if st.button("📥 Download Report"):
@@ -373,53 +388,98 @@ with tabs[2]:
 
 # Tab 4: Health Metrics
 with tabs[3]:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card fade-in">', unsafe_allow_html=True)
     st.markdown('<div class="card-title">Health Metrics Visualization</div>', unsafe_allow_html=True)
     
     if "extracted_text" in st.session_state:
-        # This would be replaced with actual data visualization in a real implementation
-        st.markdown("### Blood Test Results vs. Normal Range")
+        with st.spinner("Generating health metrics analysis..."):
+            health_metrics_response = generate_health_metrics(st.session_state["extracted_text"])
         
-        # Simple chart using Streamlit's built-in charting
-        import pandas as pd
-        import numpy as np
+        response_clean = re.sub(r'^```(?:json)?\s*', '', health_metrics_response)
+        response_clean = re.sub(r'\s*```$', '', response_clean).strip()
         
-        # Sample data - in a real app, this would come from the extracted text
-        data = {
-            'Metric': ['Hemoglobin', 'White Blood Cells', 'Platelets', 'Glucose', 'Cholesterol'],
-            'Value': [14.5, 7.2, 250, 92, 185],
-            'Min Normal': [12, 4.5, 150, 70, 125],
-            'Max Normal': [16, 11, 450, 100, 200]
-        }
+        def parse_partial_json(text):
+            try:
+                data = json.loads(text)
+                return data
+            except json.JSONDecodeError:
+                metrics = []
+                lines = text.split('\n')
+                current_metric = {}
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith('"name":'):
+                        if current_metric:
+                            metrics.append(current_metric)
+                        current_metric = {'name': line.split(':', 1)[1].strip().strip(',"')}
+                    elif line.startswith('"value":'):
+                        try:
+                            current_metric['value'] = float(line.split(':', 1)[1].strip().strip(','))
+                        except ValueError:
+                            continue
+                    elif line.startswith('"unit":'):
+                        current_metric['unit'] = line.split(':', 1)[1].strip().strip(',"')
+                    elif line.startswith('"normal_range":'):
+                        range_str = line.split(':', 1)[1].strip().strip('[]')
+                        try:
+                            min_val, max_val = map(float, range_str.split(','))
+                            current_metric['normal_range'] = [min_val, max_val]
+                        except ValueError:
+                            continue
+                if current_metric and 'value' in current_metric:
+                    metrics.append(current_metric)
+                return {"metrics": metrics}
         
-        df = pd.DataFrame(data)
-        
-        # Normalize the values for better visualization
-        df['Normalized Value'] = (df['Value'] - df['Min Normal']) / (df['Max Normal'] - df['Min Normal'])
-        df['Normalized Value'] = df['Normalized Value'].clip(0, 1)
-        
-        st.bar_chart(df.set_index('Metric')['Normalized Value'])
-        
-        st.markdown("### Detailed Analysis")
-        
-        # Create tabs for different health categories
-        health_tabs = st.tabs(["Blood Counts", "Metabolic", "Lipids", "Vitamins"])
-        
-        with health_tabs[0]:
-            st.markdown("#### Blood Cell Counts")
-            st.markdown("Your blood cell counts are within normal ranges, indicating good overall health.")
+        try:
+            metrics_data = parse_partial_json(response_clean)
+            metrics_list = metrics_data.get("metrics", [])
             
-        with health_tabs[1]:
-            st.markdown("#### Metabolic Indicators")
-            st.markdown("Your glucose and other metabolic indicators are within healthy ranges.")
-            
-        with health_tabs[2]:
-            st.markdown("#### Lipid Profile")
-            st.markdown("Your cholesterol levels are normal, which is good for heart health.")
-            
-        with health_tabs[3]:
-            st.markdown("#### Vitamin Levels")
-            st.markdown("Your vitamin D levels could be improved. Consider supplementation or more sun exposure.")
+            if metrics_list:
+                st.markdown(f"### {len(metrics_list)} parameter{'s' if len(metrics_list) > 1 else ''} detected")
+                
+                for metric in metrics_list:
+                    name = metric.get('name', 'Unknown')
+                    value = metric.get('value', 0)
+                    unit = metric.get('unit', '')
+                    min_normal, max_normal = metric.get('normal_range', [0, 0])
+                    
+                    if value < min_normal:
+                        status = "Below normal"
+                        color = "red"
+                    elif value > max_normal:
+                        status = "Above normal"
+                        color = "red"
+                    else:
+                        status = "Normal"
+                        color = "green"
+                    
+                    fig = go.Figure(go.Indicator(
+                        mode="gauge+number",
+                        value=value,
+                        domain={'x': [0, 1], 'y': [0, 1]},
+                        title={'text': f"{name} ({unit})"},
+                        gauge={
+                            'axis': {'range': [min_normal * 0.8, max_normal * 1.2]},
+                            'bar': {'color': color},
+                            'steps': [
+                                {'range': [min_normal, max_normal], 'color': "lightgreen"},
+                            ],
+                            'threshold': {
+                                'line': {'color': "red", 'width': 4},
+                                'thickness': 0.75,
+                                'value': value
+                            }
+                        }
+                    ))
+                    st.plotly_chart(fig, use_container_width=True)
+                    
+                    st.markdown(f"**{name}:** {value} {unit} ({status})")
+                    st.markdown(f"**Normal Range:** {min_normal} - {max_normal} {unit}")
+                    st.markdown("---")
+            else:
+                st.warning("No metrics data extracted from the report.")
+        except Exception as e:
+            st.error("Error processing health metrics: " + str(e))
     else:
         st.info("No metrics available yet. Please upload and process a report first.")
     
@@ -427,7 +487,7 @@ with tabs[3]:
 
 # Footer
 st.markdown("""
-<div class="footer">
+<div class="footer fade-in">
     <p>© 2025 MediScan Health Report Analyzer | Privacy Policy | Terms of Service</p>
     <p>Not a substitute for professional medical advice. Always consult with healthcare professionals.</p>
 </div>
