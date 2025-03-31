@@ -388,7 +388,6 @@ with tabs[2]:
 
 # Tab 4: Health Metrics
 with tabs[3]:
-    st.markdown('<div class="card fade-in">', unsafe_allow_html=True)
     st.markdown('<div class="card-title">Health Metrics Visualization</div>', unsafe_allow_html=True)
     
     if "extracted_text" in st.session_state:
